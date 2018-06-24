@@ -41,11 +41,17 @@ The system structure is shown in figure~\ref{fig:dfs}.
             \item Each chunk has three replications
             \item Replicas are distributed in different data servers
         \end{itemize}
+    \item Directory management
+        \begin{itemize}
+            \item Write a file in a given directory
+            \item Access a file via "directory + file name"
+        \end{itemize}    
 \end{itemize}
 
 \section{Details of Each Component}
 \subsection{Name Server}
 \begin{itemize}
+    \item List file tree
     \item List the relationships between file and chunks
     \item List the relationships between replicas and data servers
     \item Data server management
@@ -106,9 +112,14 @@ The whole system flowchart is shown in figure~\ref{fig:flowchart}.
 \section{Instructions}
 \begin{itemize}
     \item ls: list all files in DFS.
+    \item ls2: list file tree.
+    \item mkdir $<$file\_dir$>$: make dir in DFS.
     \item put $<$source\_file\_path$>$: upload local file to DFS, and return file id.
+    \item put2 $<$source\_file\_path$>$ $<$put\_savepath$>$: upload local file to DFS, specify server dir, and return file id.
     \item read $<$file\_id$>$ $<$offset$>$ $<$count$>$: read from DFS using file id.
+    \item read2 $<$file\_dir$>$ $<$offset$>$ $<$count$>$: read from DFS using file path.
     \item fetch $<$file\_id$>$ $<$save\_path$>$: download file from DFS using file id, save file to local path.
+    \item fetch2 $<$file\_dir$>$ $<$save\_path$>$: download file from DFS using file path, save file to local path.
 \end{itemize}
 
 \end{document}

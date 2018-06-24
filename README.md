@@ -16,7 +16,12 @@
 	* Each chunk has three replications
 	* Replicas are distributed in different data servers
 
+* Directory management
+	* Write a file in a given directory
+	* Access a file via "directory + file name"
+
 * Name Server
+	* List file tree
 	* List the relationships between file and chunks
 	* List the relationships between replicas and data servers
 	* Data server management
@@ -40,6 +45,9 @@
 	# list file tree in DFS
 	MiniDFS > ls2
 	
+	# make dir in DFS
+	MiniDFS > mkdir file_dir
+
 	# upload local file to DFS, return file id
 	MiniDFS > put source_file_path
 
