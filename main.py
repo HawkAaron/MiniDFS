@@ -18,7 +18,7 @@ def process_cmd(cmd, gconf):
                     print('Error: input file does not exist')
                 else:
                     gconf.file_path = cmds[1]
-                    gconf.cmd_type = OPERATION.put
+                    gconf.cmd_type = COMMAND.put
                     flag = True
         elif cmds[0] == operation_names[1]:
             if len(cmds) != 4:
@@ -31,7 +31,7 @@ def process_cmd(cmd, gconf):
                 except ValueError:
                     print('Error: fileid, offset, count should be integer')
                 else:
-                    gconf.cmd_type = OPERATION.read
+                    gconf.cmd_type = COMMAND.read
                     flag = True
         elif cmds[0] == operation_names[2]:
             if len(cmds) != 3:
@@ -47,7 +47,7 @@ def process_cmd(cmd, gconf):
                     except ValueError:
                         print('Error: fileid should be integer')
                     else:
-                        gconf.cmd_type = OPERATION.fetch
+                        gconf.cmd_type = COMMAND.fetch
                         flag = True
         elif cmds[0] == operation_names[3]:
             if len(cmds) != 1:
@@ -57,13 +57,13 @@ def process_cmd(cmd, gconf):
                 print("Bye: Exiting miniDFS...")
                 os._exit(0)
                 flag = True
-                gconf.cmd_type = OPERATION.quit
+                gconf.cmd_type = COMMAND.quit
         elif cmds[0] == operation_names[4]:
             if len(cmds) != 1:
                 print('Usage: ls')
             else:
                 flag = True
-                gconf.cmd_type = OPERATION.ls
+                gconf.cmd_type = COMMAND.ls
         else:
             pass
     else:
@@ -97,37 +97,40 @@ def run():
         gconf.cmd_flag = process_cmd(cmd_str, gconf)
 
         if gconf.cmd_flag:
-            if gconf.cmd_type == OPERATION.quit:
+            if gconf.cmd_type == COMMAND.quit:
                 sys.exit(0)
 
+            # tell name node to process cmd
             gconf.name_event.set()
 
-            if gconf.cmd_type == OPERATION.put:
+            if gconf.cmd_type == COMMAND.put:
                 for i in range(NUM_DATA_SERVER):
                     gconf.main_events[i].wait()
                 print('Put succeed! File ID is %d' % (gconf.file_id,))
-                gconf.server_block_map.clear()
+                gconf.server_chunk_map.clear()
                 for i in range(NUM_DATA_SERVER):
                     gconf.main_events[i].clear()
-            elif gconf.cmd_type == OPERATION.read:
+            elif gconf.cmd_type == COMMAND.read:
                 gconf.read_event.wait()
                 gconf.read_event.clear()
-            elif gconf.cmd_type == OPERATION.ls:
+            elif gconf.cmd_type == COMMAND.ls:
                 gconf.ls_event.wait()
                 gconf.ls_event.clear()
-            elif gconf.cmd_type == OPERATION.fetch:
+            elif gconf.cmd_type == COMMAND.fetch:
                 for i in range(NUM_DATA_SERVER):
                     gconf.main_events[i].wait()
 
-                f_fetch = open(gconf.fetch_savepath, mode='wb')
-                for i in range(gconf.fetch_blocks):
-                    server_id = gconf.fetch_servers[i]
-                    block_file_path = "dfs/datanode" + str(server_id) + "/" + str(gconf.file_id) + '-part-' + str(i)
-                    block_file = open(block_file_path, "rb")
-                    f_fetch.write(block_file.read())
-                    block_file.close()
-                f_fetch.close()
-                print('Finished download!')
+                if gconf.fetch_chunks > 0:
+                    f_fetch = open(gconf.fetch_savepath, mode='wb')
+                    for i in range(gconf.fetch_chunks):
+                        server_id = gconf.fetch_servers[i]
+                        chunk_file_path = "dfs/datanode" + str(server_id) + "/" + str(gconf.file_id) + '-part-' + str(i)
+                        chunk_file = open(chunk_file_path, "rb")
+                        f_fetch.write(chunk_file.read())
+                        chunk_file.close()
+                    f_fetch.close()
+                    print('Finished download!')
+
                 for i in range(NUM_DATA_SERVER):
                     gconf.main_events[i].clear()
             else:

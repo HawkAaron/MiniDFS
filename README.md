@@ -1,4 +1,4 @@
-# Mini DFS实现
+# Python Implementation of Mini DFS
 
 > Mini DFS实现，通过线程机制，模仿NameNode和DataNode，实现基本的ls、put、read、fetch命令。
 
