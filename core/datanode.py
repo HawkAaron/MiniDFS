@@ -13,9 +13,9 @@ class DataNode(threading.Thread):
         while True:
             gconf.data_events[self._server_id].wait()
             if gconf.cmd_flag:
-                if gconf.cmd_type == COMMAND.put and self._server_id in gconf.server_chunk_map:
+                if gconf.cmd_type in [COMMAND.put, COMMAND.put2] and self._server_id in gconf.server_chunk_map:
                     self.save()
-                elif gconf.cmd_type == COMMAND.read:
+                elif gconf.cmd_type in [COMMAND.read, COMMAND.read2]:
                     self.read()
                 else:
                     pass

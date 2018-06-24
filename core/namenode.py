@@ -1,4 +1,5 @@
 from .common import *
+from .tree import FileTree
 
 class NameNode(threading.Thread):
     """
@@ -14,6 +15,7 @@ class NameNode(threading.Thread):
         self.chunk_server_map = None # chunk -> data servers, eg. {'0-part-0': [0, 1, 2], '1-part-0': [0, 1, 2]}
         self.last_file_id = -1 # eg. 1
         self.last_data_server_id = -1 # eg. 2
+        self.tree = None # dir tree
         self.load_meta()
 
     def run(self):
@@ -23,14 +25,17 @@ class NameNode(threading.Thread):
             gconf.name_event.wait()
 
             if gconf.cmd_flag:
-                if gconf.cmd_type == COMMAND.put:
+                if gconf.cmd_type in [COMMAND.put, COMMAND.put2]:
                     self.put()
-                elif gconf.cmd_type == COMMAND.read:
+                elif gconf.cmd_type in [COMMAND.read, COMMAND.read2]:
                     self.read()
-                elif gconf.cmd_type == COMMAND.fetch:
+                elif gconf.cmd_type in [COMMAND.fetch, COMMAND.fetch2]:
                     self.fetch()
-                elif gconf.cmd_type == COMMAND.ls:
+                elif gconf.cmd_type in [COMMAND.ls, COMMAND.ls2]:
                     self.ls()
+                elif gconf.cmd_type == COMMAND.mkdir:
+                    self.tree.insert(gconf.file_dir)
+                    self.gconf.mkdir_event.set()
                 else:
                     pass
             gconf.name_event.clear()
@@ -44,7 +49,8 @@ class NameNode(threading.Thread):
                 'id_file_map': {},
                 'chunk_server_map': {},
                 'last_file_id': -1,
-                'last_data_server_id': -1
+                'last_data_server_id': -1,
+                'tree': FileTree()
             }
         else:
             with open(NAME_NODE_META_PATH, 'rb') as f:
@@ -54,6 +60,7 @@ class NameNode(threading.Thread):
         self.chunk_server_map = self.metas['chunk_server_map']
         self.last_file_id = self.metas['last_file_id']
         self.last_data_server_id = self.metas['last_data_server_id']
+        self.tree = self.metas['tree']
 
     def update_meta(self):
         """update Name Node Meta Data after put"""
@@ -65,10 +72,12 @@ class NameNode(threading.Thread):
 
     def ls(self):
         """ls print meta data info"""
-
         print('total', len(self.id_file_map))
-        for file_id, (file_name, file_len) in self.id_file_map.items():
-            print(LS_PATTERN % (file_id, file_name, file_len))
+        if self.gconf.cmd_type == COMMAND.ls2:
+            self.tree.view(self.id_file_map)
+        else:
+            for file_id, (file_name, file_len) in self.id_file_map.items():
+                print(LS_PATTERN % (file_id, file_name, file_len))
         self.gconf.ls_event.set()
 
     def put(self):
@@ -78,6 +87,15 @@ class NameNode(threading.Thread):
 
         file_name = in_path.split('/')[-1]
         self.last_file_id += 1
+        # update file tree
+        if self.gconf.cmd_type == COMMAND.put2:
+            dir = self.gconf.put_savepath
+            if dir[0] == '/': dir = dir[1:]
+            if dir[-1] == '/': dir = dir[:-1]
+            self.tree.insert(dir, self.last_file_id)
+        else:
+            self.tree.add(self.last_file_id)
+
         server_id = (self.last_data_server_id + 1) % NUM_REPLICATION
 
         file_length = os.path.getsize(in_path)
@@ -118,6 +136,16 @@ class NameNode(threading.Thread):
         read_offset = gconf.read_offset
         read_count = gconf.read_count
 
+        # find file_id
+        file_dir = gconf.file_dir
+        if self.gconf.cmd_type == COMMAND.read2:
+            file_id = self.tree.get_id_by_path(file_dir, self.id_file_map)
+            gconf.file_id = file_id
+            if file_id < 0:
+                print('No such file:', file_dir)
+                gconf.read_event.set()
+                return False
+
         if file_id not in self.id_file_map:
             print('No such file with id =', file_id)
             gconf.read_event.set()
@@ -151,11 +179,24 @@ class NameNode(threading.Thread):
         gconf = self.gconf
         file_id = gconf.file_id
 
+        # find file_id
+        file_dir = gconf.file_dir
+        if self.gconf.cmd_type == COMMAND.fetch2:
+            file_id = self.tree.get_id_by_path(file_dir, self.id_file_map)
+            gconf.file_id = file_id
+            if file_id < 0:
+                gconf.fetch_chunks = -1
+                print('No such file:', file_dir)
+                for data_event in gconf.data_events:
+                    data_event.set()
+                return None
+
         if file_id not in self.id_file_map:
             gconf.fetch_chunks = -1
             print('No such file with id =', file_id)
         else:
             file_chunks = self.id_chunk_map[file_id]
+            # print(self.id_chunk_map)
             gconf.fetch_chunks = len(file_chunks)
             # get file's data server
             for chunk in file_chunks:

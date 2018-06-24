@@ -22,7 +22,7 @@ DATA_NODE_DIR = './dfs/datanode%s'
 LS_PATTERN = '%s\t%20s\t%10s'
 
 # Operations
-operation_names = ('put', 'read', 'fetch', 'quit', 'ls')
+operation_names = ('put', 'read', 'fetch', 'quit', 'ls', 'put2', 'read2', 'fetch2', 'ls2', 'mkdir')
 COMMAND = Enum('COMMAND', operation_names)
 
 class GlobalConfig:
@@ -34,10 +34,12 @@ class GlobalConfig:
 
     cmd_flag = False
     file_id = None
-    file_path = None
+    file_dir = None # read or fetch using dir/filename
+    file_path = None # local source path
     cmd_type = None
 
-    fetch_savepath = None
+    put_savepath = None # put2 save using dir on DFS
+    fetch_savepath = None # download on local
     fetch_servers = []
     fetch_chunks = None
 
@@ -45,6 +47,7 @@ class GlobalConfig:
     name_event = threading.Event()
     ls_event = threading.Event()
     read_event = threading.Event()
+    mkdir_event = threading.Event()
 
     data_events = [threading.Event() for i in range(NUM_DATA_SERVER)]
     main_events = [threading.Event() for i in range(NUM_DATA_SERVER)]

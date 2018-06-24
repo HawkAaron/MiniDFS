@@ -64,10 +64,61 @@ def process_cmd(cmd, gconf):
             else:
                 flag = True
                 gconf.cmd_type = COMMAND.ls
+        elif cmds[0] == operation_names[5]:
+            # put2
+            if len(cmds) != 3:
+                print('Usage: put2 source_file_path put_savepath')
+            else:
+                flag = True
+                gconf.cmd_type = COMMAND.put2
+                gconf.file_path = cmds[1]
+                gconf.put_savepath = cmds[2]
+        elif cmds[0] == operation_names[6]:
+            # read2
+            if len(cmds) != 4:
+                print('Usage: read2 file_dir offset count')
+            else:
+                gconf.file_dir = cmds[1]
+                try:
+                    gconf.read_offset = int(cmds[2])
+                    gconf.read_count = int(cmds[3])
+                except ValueError:
+                    print('Error: offset, count should be integer')
+                else:
+                    gconf.cmd_type = COMMAND.read2
+                    flag = True
+        elif cmds[0] == operation_names[7]:
+            # fetch2 
+            if len(cmds) != 3:
+                print('Usage: fetch2 file_dir save_path')
+            else:
+                gconf.file_dir = cmds[1]
+                gconf.fetch_savepath = cmds[2]
+                base = os.path.split(gconf.fetch_savepath)[0]
+                if len(base) > 0 and not os.path.exists(base):
+                    print('Error: input save_path does not exist')
+                else:
+                    gconf.cmd_type = COMMAND.fetch2
+                    flag = True
+        elif cmds[0] == operation_names[8]:
+            # ls2
+            if len(cmds) != 1:
+                print('Usage: ls2')
+            else:
+                flag = True
+                gconf.cmd_type = COMMAND.ls2
+        elif cmds[0] == operation_names[9]:
+            # mkdir
+            if len(cmds) != 2:
+                print('Usage: mkdir file_dir')
+            else:
+                gconf.file_dir = cmds[1]
+                gconf.cmd_type = COMMAND.mkdir
+                flag = True
         else:
             pass
     else:
-        print('Usage: put|read|fetch|quit|ls')
+        print('Usage: put|read|fetch|quit|ls|put2|read2|fetch2|ls2|mkdir')
 
     return flag
 
@@ -103,20 +154,23 @@ def run():
             # tell name node to process cmd
             gconf.name_event.set()
 
-            if gconf.cmd_type == COMMAND.put:
+            if gconf.cmd_type in [COMMAND.put, COMMAND.put2]:
                 for i in range(NUM_DATA_SERVER):
                     gconf.main_events[i].wait()
                 print('Put succeed! File ID is %d' % (gconf.file_id,))
                 gconf.server_chunk_map.clear()
                 for i in range(NUM_DATA_SERVER):
                     gconf.main_events[i].clear()
-            elif gconf.cmd_type == COMMAND.read:
+            elif gconf.cmd_type == COMMAND.mkdir:
+                gconf.mkdir_event.wait()
+                gconf.mkdir_event.clear()
+            elif gconf.cmd_type in [COMMAND.read, COMMAND.read2]:
                 gconf.read_event.wait()
                 gconf.read_event.clear()
-            elif gconf.cmd_type == COMMAND.ls:
+            elif gconf.cmd_type in [COMMAND.ls, COMMAND.ls2]:
                 gconf.ls_event.wait()
                 gconf.ls_event.clear()
-            elif gconf.cmd_type == COMMAND.fetch:
+            elif gconf.cmd_type in [COMMAND.fetch, COMMAND.fetch2]:
                 for i in range(NUM_DATA_SERVER):
                     gconf.main_events[i].wait()
 
